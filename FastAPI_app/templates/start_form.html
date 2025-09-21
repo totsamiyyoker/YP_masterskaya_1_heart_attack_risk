@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Предсказание риска сердечного приступа</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #2b2b2b;
+        }
+        .container {
+            background: rgb(173, 173, 173);
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            text-align: center;
+        }
+        textarea {
+            background: rgb(173, 173, 173);
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #5984b4;
+            color: black;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3a5674;
+        }
+        #result {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        #csv-result {
+            margin-top: 15px;
+        }
+        #csv-result a {
+            color: #5984b4;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #csv-result a:hover {
+            text-decoration: underline;
+            color: #3a5674;
+        }
+        #patient-id {
+            font-weight: bold;
+        }
+        #prediction-result {
+            display: block;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        #predict-form button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        background-color: #5984b4;
+        color: black;
+        cursor: pointer;
+        transition: background-color .15s, opacity .15s;
+        }
+
+        #predict-form button:hover:enabled {
+        background-color: #3a5674;
+        }
+
+        #predict-form button:disabled {
+        background-color: #cfcfcf;
+        color: #666666;
+        cursor: not-allowed;
+        opacity: 0.9;
+        box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Предсказание риска сердечного приступа</h1>
+        <form id="predict-form">
+            <label for="row">Введите значения признаков через запятую:</label><br>
+            <textarea name="row" rows="3"
+                placeholder="Пример запроса: 0.494, 0.364,...,Male,0.283,0.372,7746. Должно быть 27 значений, разделённых запятой."></textarea><br>
+            <button type="submit">Сделать предсказание</button>
+        </form>
+        <div id="result-container">
+            <p>
+                <span id="patient-id" style="color: black;"></span><br>
+                <span id="prediction-result"></span> 
+            </p>
+            <p id="error-msg" style="color: red; font-weight: bold;"></p>
+        </div>
+        <hr>
+        <h3>Или загрузите CSV-файл с признаками</h3>
+        <form id="csv-form" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv">
+            <button type="submit">Сделать предсказание</button>
+        </form>
+        <div id="csv-result"></div>
+    </div>
+
+    <script>
+        const textarea = document.querySelector('#predict-form textarea');
+        const predictButton = document.querySelector('#predict-form button');
+
+        // Делаем кнопку неактивной, если текст пустой
+        function toggleButtonState() {
+            predictButton.disabled = textarea.value.trim() === '';
+        }
+
+
+        // проверка и переключение состояния кнопки
+        function toggleButtonState() {
+        // считаем пустым, если после trim нет символов
+        predictButton.disabled = textarea.value.trim() === '';
+        }
+
+        // вызов при загрузке страницы
+        document.addEventListener('DOMContentLoaded', toggleButtonState);
+
+        // следим за изменением текста
+        textarea.addEventListener('input', toggleButtonState);
+
+        // Проверка при загрузке страницы
+        toggleButtonState();
+
+        document.getElementById('predict-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const patientIdElem = document.getElementById('patient-id');
+            const resultElem = document.getElementById('prediction-result');
+            const errorElem = document.getElementById('error-msg')
+
+            // Сбрасываем предыдущий результат
+            patientIdElem.innerText = '';
+            resultElem.innerText = '';
+            errorElem.innerText = '';
+
+            // Подготавливаем переданную строку
+            const values = textarea.value
+                .split(',')
+
+            // Проверка на правильность переданной строки
+            if (values.length !== 27) {
+                errorElem.innerText = `Неверный формат! Ожидается 27 значений, разделённых запятой, а введено ${values.length}.`;
+                return; // Не отправляем форму
+            }
+
+            const formData = new FormData(this);
+            const response = await fetch('/predict_row', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            // Текст, выводимый в зависимости от предсказания
+            const labels = {
+                0: "Риск сердечного приступа отсутствует",
+                1: "Есть риск сердечного приступа"
+            };
+            
+            patientIdElem.innerText = `ID пациента: ${data.id}`;
+            resultElem.innerText = labels[data.prediction];
+            resultElem.style.color = (data.prediction === 1) ? 'red' : 'green';
+        });
+    </script>
+
+    <script>
+        document.getElementById('csv-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('/predict_csv', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if(data.status === "OK") {
+                const downloadLink = `<a href="${data.result_path}" target="_blank">Скачать CSV с предсказаниями</a>`;
+                const jsonLink = `<a href="/predictions_json" target="_blank">Посмотреть JSON с предсказаниями</a>`;
+                document.getElementById('csv-result').innerHTML = `Файл обработан! ${downloadLink} | ${jsonLink}`;
+            } else {
+                document.getElementById('csv-result').innerText = 'Ошибка: ' + data.message;
+            }
+        });
+    </script>
+</body>
+</html>

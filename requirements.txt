@@ -1,0 +1,16 @@
+catboost==1.2.8
+dill==0.4.0
+jinja2==3.1.6
+matplotlib==3.10.6
+missingno==0.5.2
+numpy==2.2.6
+pandas==2.3.2
+python_multipart==0.0.20
+scikit-learn==1.7.2
+seaborn==0.13.2
+shap==0.48.0
+
+
+fastapi==0.116.2
+uvicorn==0.35.0
+requests~=2.32.5

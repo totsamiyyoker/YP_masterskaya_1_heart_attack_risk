@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+
+# IDE
+*.vscode
+.DS_Store
+
+# CatBoost вспомогательные файлы
+notebooks/catboost_info/
+
+# Временные файлы приложения
+*.log
+
+# Сырые данные (не публиковать)
+data/raw/*
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
